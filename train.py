@@ -1,11 +1,12 @@
 """Model + training loop for the over-squashing study. THIS is the file agents edit.
 
-Current variant: pure attention retrieval with tied Q=K projections.
-The root's query one-hot and the leaves' key one-hots occupy the same feature
-indices, so sharing the query and key projection matrices aligns the attention
-similarity space with the task symmetry: matching leaf emerges as the argmax
-without having to learn two separate consistent maps. GPU-side train sampler
-(kept); embed -> one global self-attention layer -> root readout.
+Current variant: attention with raw-feature similarity bias.
+Attention logits = tied-QK dot product + tau * (X X^T) with the diagonal
+masked to -inf. Because the root's query one-hot and the matching leaf's key
+one-hot share feature indices, X X^T is exactly 1 for (root, matching leaf)
+and 0 for other leaves: a task-symmetric inductive bias that makes retrieval
+available at initialization; tau is learnable. Rest as before (no tree
+layers, GPU sampler, root readout).
 """
 
 import os
@@ -45,6 +46,7 @@ class GCN(nn.Module):
         self.q = nn.Linear(HIDDEN, HIDDEN)
         self.k = nn.Linear(HIDDEN, HIDDEN)
         self.v = nn.Linear(HIDDEN, HIDDEN)
+        self.tau = nn.Parameter(torch.tensor(1.0))
         self.embed = nn.Linear(feature_dim(r), HIDDEN)
         self.layers = nn.ModuleList(
             nn.Sequential(
@@ -57,12 +59,15 @@ class GCN(nn.Module):
     def forward(self, X):
         h = self.embed(X)
         last = len(self.layers) - 1
+        n = X.shape[1]
+        eye = torch.eye(n, device=X.device, dtype=torch.bool)
         for i, mlp in enumerate(self.layers):
             if i == last:
                 qk = self.q(h)  # tied query/key projection
-                attn = torch.softmax(
-                    (qk @ qk.transpose(-2, -1)) / HIDDEN**0.5, dim=-1
-                )
+                logits = (qk @ qk.transpose(-2, -1)) / HIDDEN**0.5
+                logits = logits + self.tau * (X @ X.transpose(-2, -1))
+                logits = logits.masked_fill(eye, float("-inf"))
+                attn = torch.softmax(logits, dim=-1)
                 agg = attn @ self.v(h)
             else:
                 agg = self.A @ h + (1 + self.eps[i]) * h
