@@ -1,10 +1,10 @@
 """Model + training loop for the over-squashing study. THIS is the file agents edit.
 
-Current variant: GIN + residual + attention FA last layer.
-Tree layers: GIN sum aggregation with residuals (kept). The final
-fully-adjacent layer is upgraded from uniform mean to single-head scaled
-dot-product self-attention: the root's query can content-select the matching
-leaf instead of receiving an undifferentiated average of all nodes.
+Current variant: shallow GIN (2 tree layers) + attention FA last layer.
+Since the global attention layer performs content-based retrieval directly,
+the deep r+1 tree stack is hypothesized unnecessary; depth is cut to a
+constant 2 GIN residual layers + attention layer, trading propagation depth
+for many more optimization steps within the fixed budget.
 """
 
 import os
@@ -30,6 +30,7 @@ torch.manual_seed(0)
 HIDDEN = 64
 LR = 1e-3
 BATCH_SIZE = 128
+NUM_TREE_LAYERS = 2
 
 
 class GCN(nn.Module):
@@ -39,7 +40,7 @@ class GCN(nn.Module):
         self.register_buffer("A", A)
         n = A.shape[0]
         self.register_buffer("A_full", torch.ones(n, n) / n)  # FA layer adjacency
-        self.eps = nn.Parameter(torch.zeros(r + 1))
+        self.eps = nn.Parameter(torch.zeros(NUM_TREE_LAYERS))
         self.q = nn.Linear(HIDDEN, HIDDEN)
         self.k = nn.Linear(HIDDEN, HIDDEN)
         self.v = nn.Linear(HIDDEN, HIDDEN)
@@ -48,7 +49,7 @@ class GCN(nn.Module):
             nn.Sequential(
                 nn.Linear(HIDDEN, HIDDEN), nn.ReLU(), nn.Linear(HIDDEN, HIDDEN)
             )
-            for _ in range(r + 1)
+            for _ in range(NUM_TREE_LAYERS + 1)
         )
         self.out = nn.Linear(HIDDEN, NUM_CLASSES)
 
