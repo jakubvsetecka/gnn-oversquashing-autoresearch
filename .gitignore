@@ -3,5 +3,6 @@ __pycache__/
 run.log
 results.tsv
 mlflow.db
+mlflow-server.log
 mlruns/
 mlartifacts/
