@@ -1,10 +1,10 @@
 """Model + training loop for the over-squashing study. THIS is the file agents edit.
 
-Current variant: GCN + fully-adjacent (FA) last layer (Alon & Yahav ICLR 2021).
-The final message-passing layer operates on a complete graph (mean-normalized
-all-ones adjacency) instead of the tree, giving the root direct access to all
-leaves in one hop and bypassing the exponential bottleneck.
-Otherwise baseline: r+1 layers, Adam, on-the-fly data, one model per radius.
+Current variant: GIN-style sum aggregation + FA last layer.
+Tree layers use raw sum aggregation over neighbors plus (1+eps)*self (GIN, Xu
+et al. 2019) followed by a 2-layer MLP; injective sum avoids the information
+loss of degree-normalized averaging. Final layer stays fully-adjacent
+(complete-graph mean), which was kept from the previous experiment.
 """
 
 import os
@@ -35,20 +35,29 @@ BATCH_SIZE = 128
 class GCN(nn.Module):
     def __init__(self, r: int):
         super().__init__()
-        A_hat = tree_adjacency(r) + torch.eye(tree_num := 2 ** (r + 1) - 1)
-        d = A_hat.sum(-1)
-        self.register_buffer("A", A_hat / (d.sqrt().unsqueeze(0) * d.sqrt().unsqueeze(1)))
-        n = A_hat.shape[0]
+        A = tree_adjacency(r)  # raw adjacency, sum aggregation
+        self.register_buffer("A", A)
+        n = A.shape[0]
         self.register_buffer("A_full", torch.ones(n, n) / n)  # FA layer adjacency
+        self.eps = nn.Parameter(torch.zeros(r + 1))
         self.embed = nn.Linear(feature_dim(r), HIDDEN)
-        self.layers = nn.ModuleList(nn.Linear(HIDDEN, HIDDEN) for _ in range(r + 1))
+        self.layers = nn.ModuleList(
+            nn.Sequential(
+                nn.Linear(HIDDEN, HIDDEN), nn.ReLU(), nn.Linear(HIDDEN, HIDDEN)
+            )
+            for _ in range(r + 1)
+        )
         self.out = nn.Linear(HIDDEN, NUM_CLASSES)
 
     def forward(self, X):
         h = self.embed(X)
-        for i, lin in enumerate(self.layers):
-            A = self.A_full if i == len(self.layers) - 1 else self.A
-            h = F.relu(lin(A @ h))
+        last = len(self.layers) - 1
+        for i, mlp in enumerate(self.layers):
+            if i == last:
+                agg = self.A_full @ h
+            else:
+                agg = self.A @ h + (1 + self.eps[i]) * h
+            h = F.relu(mlp(agg))
         return self.out(h[:, 0])  # prediction at the root
 
 
