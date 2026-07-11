@@ -1,10 +1,9 @@
 """Model + training loop for the over-squashing study. THIS is the file agents edit.
 
-Current variant: GIN-style sum aggregation + FA last layer.
-Tree layers use raw sum aggregation over neighbors plus (1+eps)*self (GIN, Xu
-et al. 2019) followed by a 2-layer MLP; injective sum avoids the information
-loss of degree-normalized averaging. Final layer stays fully-adjacent
-(complete-graph mean), which was kept from the previous experiment.
+Current variant: GIN + residual connections + FA last layer.
+Tree layers: GIN sum aggregation ((1+eps)*self + neighbor sum, 2-layer MLP)
+with additive residual h <- h + layer(h) to ease gradient flow through the
+deep stacks needed at large radii. Final layer fully-adjacent (kept).
 """
 
 import os
@@ -57,7 +56,7 @@ class GCN(nn.Module):
                 agg = self.A_full @ h
             else:
                 agg = self.A @ h + (1 + self.eps[i]) * h
-            h = F.relu(mlp(agg))
+            h = h + F.relu(mlp(agg))
         return self.out(h[:, 0])  # prediction at the root
 
 
