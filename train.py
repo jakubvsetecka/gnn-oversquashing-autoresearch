@@ -1,10 +1,10 @@
 """Model + training loop for the over-squashing study. THIS is the file agents edit.
 
-Current variant: shallow GIN (2 tree layers) + attention FA last layer.
-Since the global attention layer performs content-based retrieval directly,
-the deep r+1 tree stack is hypothesized unnecessary; depth is cut to a
-constant 2 GIN residual layers + attention layer, trading propagation depth
-for many more optimization steps within the fixed budget.
+Current variant: 0 tree layers, pure attention retrieval.
+Extreme test of the retrieval hypothesis: no tree message passing at all.
+embed -> single global self-attention layer -> readout at root. The graph
+structure is ignored entirely; the task reduces to key-query matching,
+maximizing steps within the budget at large radii.
 """
 
 import os
@@ -30,7 +30,7 @@ torch.manual_seed(0)
 HIDDEN = 64
 LR = 1e-3
 BATCH_SIZE = 128
-NUM_TREE_LAYERS = 2
+NUM_TREE_LAYERS = 0
 
 
 class GCN(nn.Module):

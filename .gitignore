@@ -6,3 +6,5 @@ mlflow.db
 mlflow-server.log
 mlruns/
 mlartifacts/
+grl.tex
+exam2024.cls
