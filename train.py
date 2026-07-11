@@ -1,11 +1,11 @@
 """Model + training loop for the over-squashing study. THIS is the file agents edit.
 
-Current variant: pure attention retrieval + GPU-side training data sampler.
-Architecture unchanged (embed -> one global self-attention layer -> root
-readout, no tree layers). Training batches are now generated directly on the
-GPU with batched argsort permutations (same distribution as prepare.make_batch,
-different RNG stream, never TEST_SEED), removing the CPU randperm bottleneck
-to get more optimization steps at large radii. Evaluation untouched.
+Current variant: pure attention retrieval with tied Q=K projections.
+The root's query one-hot and the leaves' key one-hots occupy the same feature
+indices, so sharing the query and key projection matrices aligns the attention
+similarity space with the task symmetry: matching leaf emerges as the argmax
+without having to learn two separate consistent maps. GPU-side train sampler
+(kept); embed -> one global self-attention layer -> root readout.
 """
 
 import os
@@ -59,8 +59,9 @@ class GCN(nn.Module):
         last = len(self.layers) - 1
         for i, mlp in enumerate(self.layers):
             if i == last:
+                qk = self.q(h)  # tied query/key projection
                 attn = torch.softmax(
-                    (self.q(h) @ self.k(h).transpose(-2, -1)) / HIDDEN**0.5, dim=-1
+                    (qk @ qk.transpose(-2, -1)) / HIDDEN**0.5, dim=-1
                 )
                 agg = attn @ self.v(h)
             else:
