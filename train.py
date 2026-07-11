@@ -1,8 +1,10 @@
 """Model + training loop for the over-squashing study. THIS is the file agents edit.
 
-Baseline: plain GCN with r+1 message-passing layers per radius, Adam, on-the-fly
-data (fresh samples every step, so train accuracy == generalization accuracy).
-One model is trained per radius within its share of the fixed time budget.
+Current variant: GCN + fully-adjacent (FA) last layer (Alon & Yahav ICLR 2021).
+The final message-passing layer operates on a complete graph (mean-normalized
+all-ones adjacency) instead of the tree, giving the root direct access to all
+leaves in one hop and bypassing the exponential bottleneck.
+Otherwise baseline: r+1 layers, Adam, on-the-fly data, one model per radius.
 """
 
 import os
@@ -36,14 +38,17 @@ class GCN(nn.Module):
         A_hat = tree_adjacency(r) + torch.eye(tree_num := 2 ** (r + 1) - 1)
         d = A_hat.sum(-1)
         self.register_buffer("A", A_hat / (d.sqrt().unsqueeze(0) * d.sqrt().unsqueeze(1)))
+        n = A_hat.shape[0]
+        self.register_buffer("A_full", torch.ones(n, n) / n)  # FA layer adjacency
         self.embed = nn.Linear(feature_dim(r), HIDDEN)
         self.layers = nn.ModuleList(nn.Linear(HIDDEN, HIDDEN) for _ in range(r + 1))
         self.out = nn.Linear(HIDDEN, NUM_CLASSES)
 
     def forward(self, X):
         h = self.embed(X)
-        for lin in self.layers:
-            h = F.relu(lin(self.A @ h))
+        for i, lin in enumerate(self.layers):
+            A = self.A_full if i == len(self.layers) - 1 else self.A
+            h = F.relu(lin(A @ h))
         return self.out(h[:, 0])  # prediction at the root
 
 
