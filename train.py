@@ -1,10 +1,11 @@
 """Model + training loop for the over-squashing study. THIS is the file agents edit.
 
-Current variant: 0 tree layers, pure attention retrieval.
-Extreme test of the retrieval hypothesis: no tree message passing at all.
-embed -> single global self-attention layer -> readout at root. The graph
-structure is ignored entirely; the task reduces to key-query matching,
-maximizing steps within the budget at large radii.
+Current variant: pure attention retrieval + GPU-side training data sampler.
+Architecture unchanged (embed -> one global self-attention layer -> root
+readout, no tree layers). Training batches are now generated directly on the
+GPU with batched argsort permutations (same distribution as prepare.make_batch,
+different RNG stream, never TEST_SEED), removing the CPU randperm bottleneck
+to get more optimization steps at large radii. Evaluation untouched.
 """
 
 import os
@@ -68,16 +69,42 @@ class GCN(nn.Module):
         return self.out(h[:, 0])  # prediction at the root
 
 
+def fast_batch(r: int, batch_size: int, generator: torch.Generator):
+    """GPU-side equivalent of prepare.make_batch (train stream only)."""
+    n = 2 ** (r + 1) - 1
+    L = 2**r
+    first_leaf = L - 1
+    Fdim = feature_dim(r)
+    dev = generator.device
+    X = torch.zeros(batch_size, n, Fdim, device=dev)
+    keys = torch.rand(batch_size, L, device=dev, generator=generator).argsort(-1)
+    labels = torch.randint(
+        0, NUM_CLASSES, (batch_size, L), device=dev, generator=generator
+    )
+    target_leaf = torch.randint(0, L, (batch_size,), device=dev, generator=generator)
+    batch_idx = torch.arange(batch_size, device=dev)
+    query = keys[batch_idx, target_leaf]
+    y = labels[batch_idx, target_leaf]
+    X[batch_idx, 0, query] = 1.0
+    X[:, 0, L + NUM_CLASSES] = 1.0
+    b = batch_idx.unsqueeze(1).expand(-1, L)
+    leaf = torch.arange(first_leaf, n, device=dev).unsqueeze(0).expand(batch_size, -1)
+    X[b, leaf, keys] = 1.0
+    X[b, leaf, L + labels] = 1.0
+    X[:, first_leaf:, L + NUM_CLASSES + 1] = 1.0
+    return X, y
+
+
 def train_one_radius(r: int) -> tuple[float, int]:
     model = GCN(r).to(DEVICE)
     opt = torch.optim.Adam(model.parameters(), lr=LR)
-    generator = torch.Generator().manual_seed(r)  # train data stream, != TEST_SEED
+    generator = torch.Generator(device=DEVICE).manual_seed(r)  # train stream, != TEST_SEED
     start = time.monotonic()
     steps = 0
     while time.monotonic() - start < PER_RADIUS_BUDGET:
-        X, y = make_batch(r, BATCH_SIZE, generator)
-        logits = model(X.to(DEVICE))
-        loss = F.cross_entropy(logits, y.to(DEVICE))
+        X, y = fast_batch(r, BATCH_SIZE, generator)
+        logits = model(X)
+        loss = F.cross_entropy(logits, y)
         opt.zero_grad()
         loss.backward()
         opt.step()
