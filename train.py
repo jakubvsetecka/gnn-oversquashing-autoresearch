@@ -1,12 +1,10 @@
 """Model + training loop for the over-squashing study. THIS is the file agents edit.
 
-Current variant: attention with raw-feature similarity bias.
-Attention logits = tied-QK dot product + tau * (X X^T) with the diagonal
-masked to -inf. Because the root's query one-hot and the matching leaf's key
-one-hot share feature indices, X X^T is exactly 1 for (root, matching leaf)
-and 0 for other leaves: a task-symmetric inductive bias that makes retrieval
-available at initialization; tau is learnable. Rest as before (no tree
-layers, GPU sampler, root readout).
+Current variant: pure raw-feature-bias attention (no learned QK).
+Ablation of the learned attention term: logits = tau * (X X^T), diagonal
+masked, tau learnable. The raw similarity alone is 1 for (root, matching
+leaf) and 0 for other leaves, so retrieval requires no learned similarity
+map at all. Rest as before (no tree layers, GPU sampler, root readout).
 """
 
 import os
@@ -63,9 +61,7 @@ class GCN(nn.Module):
         eye = torch.eye(n, device=X.device, dtype=torch.bool)
         for i, mlp in enumerate(self.layers):
             if i == last:
-                qk = self.q(h)  # tied query/key projection
-                logits = (qk @ qk.transpose(-2, -1)) / HIDDEN**0.5
-                logits = logits + self.tau * (X @ X.transpose(-2, -1))
+                logits = self.tau * (X @ X.transpose(-2, -1))
                 logits = logits.masked_fill(eye, float("-inf"))
                 attn = torch.softmax(logits, dim=-1)
                 agg = attn @ self.v(h)
