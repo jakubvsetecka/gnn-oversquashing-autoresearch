@@ -1,9 +1,10 @@
 """Model + training loop for the over-squashing study. THIS is the file agents edit.
 
-Current variant: GIN + residual connections + FA last layer.
-Tree layers: GIN sum aggregation ((1+eps)*self + neighbor sum, 2-layer MLP)
-with additive residual h <- h + layer(h) to ease gradient flow through the
-deep stacks needed at large radii. Final layer fully-adjacent (kept).
+Current variant: GIN + residual + attention FA last layer.
+Tree layers: GIN sum aggregation with residuals (kept). The final
+fully-adjacent layer is upgraded from uniform mean to single-head scaled
+dot-product self-attention: the root's query can content-select the matching
+leaf instead of receiving an undifferentiated average of all nodes.
 """
 
 import os
@@ -39,6 +40,9 @@ class GCN(nn.Module):
         n = A.shape[0]
         self.register_buffer("A_full", torch.ones(n, n) / n)  # FA layer adjacency
         self.eps = nn.Parameter(torch.zeros(r + 1))
+        self.q = nn.Linear(HIDDEN, HIDDEN)
+        self.k = nn.Linear(HIDDEN, HIDDEN)
+        self.v = nn.Linear(HIDDEN, HIDDEN)
         self.embed = nn.Linear(feature_dim(r), HIDDEN)
         self.layers = nn.ModuleList(
             nn.Sequential(
@@ -53,7 +57,10 @@ class GCN(nn.Module):
         last = len(self.layers) - 1
         for i, mlp in enumerate(self.layers):
             if i == last:
-                agg = self.A_full @ h
+                attn = torch.softmax(
+                    (self.q(h) @ self.k(h).transpose(-2, -1)) / HIDDEN**0.5, dim=-1
+                )
+                agg = attn @ self.v(h)
             else:
                 agg = self.A @ h + (1 + self.eps[i]) * h
             h = h + F.relu(mlp(agg))
