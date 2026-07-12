@@ -21,6 +21,9 @@ root's query. The information required at the root grows exponentially with r.
 - `replication.tsv` — seed-replication study: the 6 headline variants re-run with 4 fresh seeds each.
 - `NOTES.md` — the agent's experiment log and scientific interpretation.
 - `analysis.py` — regenerates the report figures and seed statistics (`uv run analysis.py`).
+- `variants/` — snapshot of `train.py` for every experiment in `results.tsv`
+  (numbered by experiment), so no git-history access is needed to reproduce any
+  variant: copy one over `train.py` and run `uv run train.py`.
 
 **Metric:** `score_mean_acc`, mean root accuracy over radii 2-7 on a fixed held-out
 set (higher is better, chance = 1/8). Total training budget fixed at 240 s per
