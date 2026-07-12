@@ -1,0 +1,25 @@
+commit	label	seed	score	acc_per_radius
+89cbcfd	baseline GCN	1	0.301595	0.80/0.32/0.27/0.16/0.13/0.13
+89cbcfd	baseline GCN	2	0.338135	1.00/0.32/0.25/0.18/0.14/0.13
+89cbcfd	baseline GCN	3	0.333496	1.00/0.33/0.24/0.16/0.13/0.13
+89cbcfd	baseline GCN	4	0.294108	0.78/0.32/0.25/0.16/0.14/0.12
+b2396e2	GIN + residual, FA last	1	0.458171	0.99/1.00/0.27/0.21/0.16/0.12
+b2396e2	GIN + residual, FA last	2	0.427490	1.00/0.77/0.26/0.22/0.17/0.14
+b2396e2	GIN + residual, FA last	3	0.352783	1.00/0.32/0.26/0.22/0.18/0.14
+b2396e2	GIN + residual, FA last	4	0.462402	1.00/1.00/0.28/0.20/0.17/0.12
+4d469d3	attention FA last layer	1	0.723226	1.00/1.00/1.00/1.00/0.21/0.13
+4d469d3	attention FA last layer	2	0.830404	1.00/1.00/1.00/1.00/0.87/0.11
+4d469d3	attention FA last layer	3	0.855387	1.00/1.00/1.00/1.00/1.00/0.13
+4d469d3	attention FA last layer	4	0.854004	1.00/1.00/1.00/1.00/1.00/0.12
+9ebb46d	pure raw-X attention (no QK)	1	0.999837	1.00/1.00/1.00/1.00/1.00/1.00
+9ebb46d	pure raw-X attention (no QK)	2	0.999919	1.00/1.00/1.00/1.00/1.00/1.00
+9ebb46d	pure raw-X attention (no QK)	3	0.999919	1.00/1.00/1.00/1.00/1.00/1.00
+9ebb46d	pure raw-X attention (no QK)	4	0.999756	1.00/1.00/1.00/1.00/1.00/1.00
+d8f7be0	ablation: baseline + virtual node	1	0.295410	0.79/0.31/0.23/0.15/0.16/0.13
+d8f7be0	ablation: baseline + virtual node	2	0.266032	0.60/0.32/0.24/0.18/0.13/0.12
+d8f7be0	ablation: baseline + virtual node	3	0.300700	0.80/0.32/0.25/0.17/0.15/0.11
+d8f7be0	ablation: baseline + virtual node	4	0.335205	0.99/0.32/0.26/0.16/0.15/0.13
+b02bc16	ablation: local GAT on tree edges	1	0.435710	1.00/0.99/0.23/0.16/0.12/0.12
+b02bc16	ablation: local GAT on tree edges	2	0.432699	1.00/0.98/0.21/0.15/0.13/0.12
+b02bc16	ablation: local GAT on tree edges	3	0.435303	1.00/1.00/0.22/0.15/0.12/0.12
+b02bc16	ablation: local GAT on tree edges	4	0.404541	0.74/1.00/0.28/0.15/0.14/0.12

@@ -1,0 +1,18 @@
+commit	score	acc_per_radius	status	description
+89cbcfd	0.279134	0.64/0.32/0.27/0.19/0.14/0.13	keep	baseline GCN
+2557db2	0.306966	0.78/0.31/0.27/0.19/0.16/0.13	keep	FA last layer
+5fbbe09	0.321208	1.00/0.33/0.20/0.16/0.12/0.12	keep	GIN sum agg + MLP, FA last
+b2396e2	0.466309	1.00/1.00/0.26/0.23/0.17/0.14	keep	GIN + residual, FA last
+4d469d3	0.854899	1.00/1.00/1.00/1.00/1.00/0.13	keep	attention FA last layer
+f0b717f	0.854980	1.00/1.00/1.00/1.00/1.00/0.13	keep	2 tree layers + attention FA
+224f5cb	0.856608	1.00/1.00/1.00/1.00/1.00/0.14	keep	0 tree layers, pure attention
+96a7419	0.853190	1.00/1.00/1.00/1.00/1.00/0.12	discard	pure attention, HIDDEN=128
+9fd1a4a	0.857666	1.00/1.00/1.00/1.00/1.00/0.15	keep	GPU data sampler
+1ba95b9	0.867513	1.00/1.00/1.00/1.00/1.00/0.21	keep	tied Q=K attention
+a9b86ed	0.999919	1.00/1.00/1.00/1.00/1.00/1.00	keep	raw-X similarity bias attention
+9ebb46d	1.000000	1.00/1.00/1.00/1.00/1.00/1.00	keep	pure raw-X attention (no QK)
+54cebfb	0.998372	1.00/1.00/1.00/1.00/1.00/0.99	discard	ablation: no diagonal mask
+9d30db1	0.840576	1.00/1.00/1.00/1.00/0.90/0.14	discard	ablation: baseline + raw-X attn last layer only
+d8f7be0	0.329753	0.99/0.31/0.24/0.17/0.14/0.13	discard	ablation: baseline + virtual node
+b02bc16	0.320312	1.00/0.32/0.21/0.15/0.12/0.12	discard	ablation: local GAT on tree edges
+923766e	0.861247	1.00/1.00/1.00/1.00/1.00/0.17	discard	ablation: tied QK + diag mask, no raw bias

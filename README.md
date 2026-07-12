@@ -15,9 +15,12 @@ root's query. The information required at the root grows exponentially with r.
 **Files:**
 
 - `prepare.py` — fixed harness: dataset generation, evaluation, constants. Not modified.
-- `train.py` — model + training loop. The single file the agent edits.
+- `train.py` — model + training loop. The single file the agent edits (HEAD holds the winning variant).
 - `program.md` — instructions for the autonomous research agent.
-- `results.tsv` — experiment log (untracked).
+- `results.tsv` — log of all 17 loop experiments (keep/discard/crash), one git commit each.
+- `replication.tsv` — seed-replication study: the 6 headline variants re-run with 4 fresh seeds each.
+- `NOTES.md` — the agent's experiment log and scientific interpretation.
+- `analysis.py` — regenerates the report figures and seed statistics (`uv run analysis.py`).
 
 **Metric:** `score_mean_acc`, mean root accuracy over radii 2-7 on a fixed held-out
 set (higher is better, chance = 1/8). Total training budget fixed at 240 s per

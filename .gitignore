@@ -1,10 +1,10 @@
 .venv/
 __pycache__/
 run.log
-results.tsv
 mlflow.db
 mlflow-server.log
 mlruns/
 mlartifacts/
 grl.tex
 exam2024.cls
+REPORT_OUTLINE.md
